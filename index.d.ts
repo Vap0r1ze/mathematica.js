@@ -7,7 +7,7 @@ declare namespace MathematicaJS {
     inHistory: string[];
     proc: ChildProcessWithoutNullStreams;
 
-    run (script: string, expectReturn?: true): Promise<String>;
+    run (script: string, expectReturn?: true): Promise<any>;
     run (script: string, expectReturn: false): Promise<void>;
     destroy (): void;
   }
