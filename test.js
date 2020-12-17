@@ -1,15 +1,24 @@
 
-const { MathematicaSession } = require('.')
+const { MathematicaKernel } = require('.')
 
-const q = ['Integrate[1/(x^3 - 1), x]', '2+2', 'Factor[x^2-2x]', 'Do[0, Infinity]']
-const session = new MathematicaSession()
+const queries = [
+  'Integrate[1/(x^3 - 1), x]',
+  'ExportString[Log[I] // TeXForm,"String"]',
+  'Factor[x^2-2x]',
+  'testVar * 4',
+  'Do[0, Infinity]',
+]
+const mathKernel = new MathematicaKernel()
 
-for (const script of q) {
-  session.execScript(script).then(result => {
-    console.log(`In: ${script}\nOut: ${result}\n`)
+// mathKernel.run(query: string, expectResult: boolean)
+mathKernel.run('testVar := 4', false)
+
+for (const query of queries) {
+  mathKernel.run(query).then(result => {
+    console.log(`In: ${query}\nOut: ${JSON.stringify(result)}\n`)
   })
 }
 
 setTimeout(() => {
-  session.destroy()
-}, 2000)
+  mathKernel.destroy()
+}, 4000)

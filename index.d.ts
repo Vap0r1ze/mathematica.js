@@ -2,12 +2,13 @@ declare namespace MathematicaJS {
   import { ChildProcessWithoutNullStreams } from 'child_process';
   import { EventEmitter } from 'events';
 
-  class MathematicaSession extends EventEmitter {
+  class MathematicaKernel extends EventEmitter {
     inCurrent: number;
     inHistory: string[];
     proc: ChildProcessWithoutNullStreams;
 
-    execScript (script: string): Promise<String>;
+    run (script: string, expectReturn?: true): Promise<String>;
+    run (script: string, expectReturn: false): Promise<void>;
     destroy (): void;
   }
 }

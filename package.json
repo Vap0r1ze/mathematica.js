@@ -1,6 +1,6 @@
 {
   "name": "mathematica.js",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A simple interface for the Mathematica kernel",
   "main": "index.js",
   "scripts": {

@@ -3,12 +3,10 @@ const { EventEmitter } = require('events')
 
 const handleStdOut = Symbol('handleStdOut')
 const runCurrentIn = Symbol('runCurrentIn')
-const outResult = Symbol('outResult')
 
-class MathematicaSession extends EventEmitter {
+class MathematicaKernel extends EventEmitter {
   constructor () {
     super()
-    this.waitingForOut = false
     this.inCurrent = 0
     this.inHistory = []
     this.proc = childProcess.spawn('math', ['-noprompt'])
@@ -16,33 +14,41 @@ class MathematicaSession extends EventEmitter {
   }
 
   [handleStdOut] (data) {
-    this.waitingForOut = false
-    this.emit(outResult, this.inCurrent, data.toString().trim())
-    this.inCurrent++
-    this[runCurrentIn]()
+    const outs = data.toString('utf8')
+      .trim()
+      .replace(/\xC3\x8E\xC2(.)/g, (m, c) => String.fromCharCode(0x300 + c.charCodeAt())) // fix broken greek chars
+      .split('\n')
+    for (const out of outs) {
+      try {
+        const result = JSON.parse(JSON.parse(out))
+        this.emit(`outResult:${result.id}`, JSON.parse(result.data))
+      } catch (error) {}
+    }
   }
 
   [runCurrentIn] () {
-    const script = this.inHistory[this.inCurrent]
-    if (!script) return
-    this.waitingForOut = true
-    this.proc.stdin.write(`${script}\n`)
+    const { query, expectResult } = this.inHistory[this.inCurrent]
+    if (!query) return
+    if (expectResult)
+      this.proc.stdin.write(`ExportString[{"id" -> ${this.inCurrent}, "data" -> ExportString[${query}, "ExpressionJSON", Compact -> True]}, "JSON", Compact -> True]\n`)
+    else
+      this.proc.stdin.write(`${query}\n`)
+    this.inCurrent++
   }
 
-  execScript (script) {
-    script = script.replace(/\n/g, '')
-    this.inHistory.push(script)
-    const awaitedIndex = this.inHistory.length - 1
-    if (!this.waitingForOut) this[runCurrentIn]()
-    return new Promise((resolve, reject) => {
-      const resultListener = (i, result) => {
-        if (i === awaitedIndex) {
-          this.off(outResult, resultListener)
-          resolve(result)
-        }
-      }
-      this.on(outResult, resultListener)
-    })
+  run (query, expectResult = true) {
+    query = query.replace(/\n/g, ' ')
+    this.inHistory.push({ query, expectResult })
+    if (expectResult) {
+      const awaitedId = this.inCurrent
+      this[runCurrentIn]()
+      return new Promise((resolve, reject) => {
+        this.once(`outResult:${awaitedId}`, resolve)
+      })
+    } else {
+      this[runCurrentIn]()
+      return Promise.resolve()
+    }
   }
   destroy () {
     this.proc.stdin.write('Quit[]\n')
@@ -50,4 +56,4 @@ class MathematicaSession extends EventEmitter {
   }
 }
 
-exports.MathematicaSession = MathematicaSession
+exports.MathematicaKernel = MathematicaKernel
